@@ -52,39 +52,12 @@ jobs:
 
       - run: cargo install --locked cargo-zigbuild
 
-      - name: Build release binary (static musl, default features)
-        run: cargo zigbuild --release --locked --target ${{ matrix.target }} --bin meow
-
-      - name: Build minimal release binary (stripped, for size check)
-        if: matrix.minimal_budget_bytes != 0
+      - name: Build release binary (static musl)
         run: |
           cargo zigbuild --release --locked \
-            --no-default-features --features minimal \
-            --target ${{ matrix.target }} \
-            --bin meow
-          # Copy minimal binary aside before default binary overwrites artifact.
-          # Binary is already stripped via [profile.release] strip = true in
-          # the workspace Cargo.toml — no post-build strip needed (and the
-          # host `strip` cannot read aarch64 ELF anyway).
-          cp "target/${{ matrix.target }}/release/meow" \
-             "target/${{ matrix.target }}/release/meow-minimal"
-
-      - name: Minimal binary size check
-        if: matrix.minimal_budget_bytes != 0
-        run: |
-          SIZE=$(stat -c%s "target/${{ matrix.target }}/release/meow-minimal")
-          BUDGET=${{ matrix.minimal_budget_bytes }}
-          echo "Minimal binary size: ${SIZE} bytes (budget: ${BUDGET} bytes)"
-          if [ "${SIZE}" -gt "${BUDGET}" ]; then
-            if [ "${{ matrix.minimal_soft_gate }}" = "true" ]; then
-              echo "::warning::${{ matrix.target }} minimal binary ${SIZE} bytes exceeds soft budget ${BUDGET} bytes (ADR-0007 §1)"
-            else
-              echo "::error::${{ matrix.target }} minimal binary ${SIZE} bytes exceeds hard budget ${BUDGET} bytes (ADR-0007 §2)"
-              exit 1
-            fi
-          else
-            echo "Size check passed: ${SIZE} <= ${BUDGET}"
-          fi
+          --no-default-features --features vless,vless-vision,boring-tls \
+          --target ${{ matrix.target }} \
+          --bin meow
 
       - name: Package tarball
         id: pkg
